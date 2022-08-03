@@ -26,25 +26,24 @@ app.get('/', (request, response) => {
     response.send('Active');
 });
 
-app.get('/weather', (request, response) => {
+app.get('/weather', (request, response, next) => {
     try {
-        console.log('In weather try');
         let searchQuery = request.query.searchQuery;
         let lat = request.query.lat;
         let lon = request.query.lon;
         let aCity = data.find(city => city.city_name === searchQuery || city.lat === lat && city.lon === lon);
-        console.log(searchQuery);
-        console.log(lat);
-        console.log(lon);
         if(aCity !== undefined){
             let cityInstance = new City(aCity);
             let dataToSend = cityInstance.data.map((val) => {
                 return (new Forecast(val.valid_date,'Low of '+val.high_temp+', high of '+val.low_temp+' with '+val.weather.description));
             });
-            response.send(dataToSend);
+            response.status(200).send(dataToSend);
+        }else{
+            throw new Error('City not found in weather.');
         }
     }catch(error){
         console.log(error);
+        next(error);
     }
 });
 
@@ -53,7 +52,7 @@ app.get('/weather', (request, response) => {
         console.log('In weather try');
         let lat = request.query.lat;
         let lon = request.query.lon;
-        let aCity = data.find(city => city.city_name === searchQuery);
+        let aCity = data.find(city => city.city_name === searchQuery || city.lat === lat && city.lon === lon);
         let cityInstance = new City(aCity);
         let dataToSend = cityInstance.data.map((val) => {
             return (new Forecast(val.valid_date,'Low of '+val.high_temp+', high of '+val.low_temp+' with '+val.weather.description));
