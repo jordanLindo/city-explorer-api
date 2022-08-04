@@ -2,8 +2,6 @@
 /* eslint-disable no-undef */
 'use strict';
 
-const { request } = require('express');
-
 console.log('server.js connected.');
 
 
@@ -13,7 +11,7 @@ const express = require('express');
 require('dotenv').config();
 let data = require('./data/weather.json');
 const cors = require('cors');
-const { response } = require('express');
+const axios = require('axios');
 
 
 // USE
@@ -23,54 +21,58 @@ const PORT = process.env.PORT || 3002;
 
 
 app.get('/', (request, response) => {
-    response.send('Active');
+    response.status(200).send('Active');
 });
+
 
 app.get('/weather', (request, response, next) => {
     try {
         let searchQuery = request.query.searchQuery;
         let lat = request.query.lat;
         let lon = request.query.lon;
-        let aCity = data.find(city => city.city_name === searchQuery || city.lat === lat && city.lon === lon);
-        if(aCity !== undefined){
-            let cityInstance = new City(aCity);
-            let dataToSend = cityInstance.data.map((val) => {
-                return (new Forecast(val.valid_date,'Low of '+val.high_temp+', high of '+val.low_temp+' with '+val.weather.description));
-            });
+        let cityUrl = `${process.env.WEATHER_API_URL}/weather/?key=${process.env.WEATHER_API_KEY}`;
+        let isQueried = false;
+        if (searchQuery !== undefined) {
+            cityUrl += `&searchQuery=${searchQuery}`;
+            isQueried = true;
+        }
+        if (lat !== undefined && lon !== undefined) {
+            cityUrl += `&lat=${lat}&lon${lon}&format=json`;
+            isQueried = true;
+        }
+        if (isQueried) {
+            let aCity;
+            axios({
+                method: 'get',
+                url: cityUrl
+            }).then(apiResponse => {
+                aCity = apiResponse.data;
+            }); if (aCity !== undefined) {
+                let cityInstance = new City(aCity);
+                let dataToSend = cityInstance.data.map((val) => {
+                    return (new Forecast(val.valid_date, 'Low of ' + val.high_temp + ', high of ' + val.low_temp + ' with ' + val.weather.description));
+                });
+            } else {
+                throw new Error('City not found in weather.');
+            }
             response.status(200).send(dataToSend);
-        }else{
+        } else {
             throw new Error('City not found in weather.');
         }
-    }catch(error){
+    } catch (error) {
         console.log(error);
         next(error);
     }
 });
 
-app.get('/weather', (request, response) => {
-    try {
-        console.log('In weather try');
-        let lat = request.query.lat;
-        let lon = request.query.lon;
-        let aCity = data.find(city => city.city_name === searchQuery || city.lat === lat && city.lon === lon);
-        let cityInstance = new City(aCity);
-        let dataToSend = cityInstance.data.map((val) => {
-            return (new Forecast(val.valid_date,'Low of '+val.high_temp+', high of '+val.low_temp+' with '+val.weather.description));
-        });
-        response.send(dataToSend);
-    }catch(error){
-        console.log(error);
-    }
-});
-
 //catch-all
 app.get('*', (request, response) => {
-    response.send('The route was not found. Error 404');
+    response.status(404).send('The route was not found. Error 404');
 });
 
 //Classes
-class City{
-    constructor(cityObject){
+class City {
+    constructor(cityObject) {
         this.data = cityObject.data;
         this.city_name = cityObject.city_name;
         this.lon = cityObject.lon;
@@ -81,8 +83,8 @@ class City{
     }
 }
 
-class Forecast{
-    constructor(date, description){
+class Forecast {
+    constructor(date, description) {
         this.date = date;
         this.description = description;
     }
