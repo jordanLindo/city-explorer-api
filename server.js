@@ -1,17 +1,16 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable no-undef */
 'use strict';
-
 console.log('server.js connected.');
 
 
 
 // REQUIRE
 const express = require('express');
-require('dotenv').config();
-let data = require('./data/weather.json');
 const cors = require('cors');
+require('dotenv').config();
 const axios = require('axios');
+//let data = require('./data/weather.json');
 
 
 // USE
@@ -25,37 +24,37 @@ app.get('/', (request, response) => {
 });
 
 
-app.get('/weather', (request, response, next) => {
+app.get('/weather', async (request, response, next) => {
     try {
-        let searchQuery = request.query.searchQuery;
         let lat = request.query.lat;
         let lon = request.query.lon;
-        let cityUrl = `${process.env.WEATHER_API_URL}/weather/?key=${process.env.WEATHER_API_KEY}`;
+        let cityUrl = `${process.env.WEATHER_API_URL}`;
         let isQueried = false;
-        if (searchQuery !== undefined) {
-            cityUrl += `&searchQuery=${searchQuery}`;
-            isQueried = true;
-        }
         if (lat !== undefined && lon !== undefined) {
-            cityUrl += `&lat=${lat}&lon${lon}&format=json`;
+            cityUrl += `lat=${lat}&lon=${lon}&key=${process.env.WEATHER_API_KEY}`;
             isQueried = true;
         }
         if (isQueried) {
             let aCity;
-            axios({
-                method: 'get',
-                url: cityUrl
-            }).then(apiResponse => {
-                aCity = apiResponse.data;
-            }); if (aCity !== undefined) {
-                let cityInstance = new City(aCity);
-                let dataToSend = cityInstance.data.map((val) => {
-                    return (new Forecast(val.valid_date, 'Low of ' + val.high_temp + ', high of ' + val.low_temp + ' with ' + val.weather.description));
-                });
-            } else {
-                throw new Error('City not found in weather.');
-            }
-            response.status(200).send(dataToSend);
+            let results = await axios.get(cityUrl);
+            aCity = results.data;
+            console.log(aCity);
+            console.log(aCity.data[0].weather.description);
+            if (aCity !== undefined) {
+                let cityInstance = new City(aCity.data[0]);
+
+                let forecastUrl = `https://api.weatherbit.io/v2.0/forecast/daily?city=${cityInstance.cityName}&key=${process.env.WEATHER_API_KEY}&units=I`;
+
+                let forecastResult = await axios.get(forecastUrl);
+
+                cityInstance.forecast = forecastResult.data;
+
+                let dataToSend = cityInstance.forecast;
+                console.log(dataToSend)
+                response.status(200).send(dataToSend);
+            };
+
+
         } else {
             throw new Error('City not found in weather.');
         }
@@ -73,13 +72,10 @@ app.get('*', (request, response) => {
 //Classes
 class City {
     constructor(cityObject) {
-        this.data = cityObject.data;
-        this.city_name = cityObject.city_name;
+        this.cityName = cityObject.city_name;
         this.lon = cityObject.lon;
         this.lat = cityObject.lat;
-        this.timezone = cityObject.timezone;
-        this.country_code = cityObject.country_code;
-        this.state_code = cityObject.state_code;
+        this.forecast = [];
     }
 }
 
