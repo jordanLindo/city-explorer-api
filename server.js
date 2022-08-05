@@ -38,8 +38,6 @@ app.get('/weather', async (request, response, next) => {
             let aCity;
             let results = await axios.get(cityUrl);
             aCity = results.data;
-            console.log(aCity);
-            console.log(aCity.data[0].weather.description);
             if (aCity !== undefined) {
                 let cityInstance = new City(aCity.data[0]);
 
@@ -50,7 +48,6 @@ app.get('/weather', async (request, response, next) => {
                 cityInstance.forecast = forecastResult.data;
 
                 let dataToSend = cityInstance.forecast;
-                console.log(dataToSend)
                 response.status(200).send(dataToSend);
             };
 
@@ -59,10 +56,23 @@ app.get('/weather', async (request, response, next) => {
             throw new Error('City not found in weather.');
         }
     } catch (error) {
-        console.log(error);
         next(error);
     }
 });
+
+app.get('/movie', async (request, response, next) =>{
+    try{
+        let movieUrl = `${process.env.MOVIE_API_URL}api_key=${process.env.MOVIE_API_KEY}&language=en-US&sort_by=popularity.desc&include_adult=false&include_video=false&with_keywords=${request.query.keyword}&with_watch_monetization_types=free`;
+
+        let movieResult = await axios.get(movieUrl);
+
+        response.status(200).send(movieResult);
+
+
+    }catch(error){
+        next(error);
+    }
+})
 
 //catch-all
 app.get('*', (request, response) => {
@@ -76,13 +86,6 @@ class City {
         this.lon = cityObject.lon;
         this.lat = cityObject.lat;
         this.forecast = [];
-    }
-}
-
-class Forecast {
-    constructor(date, description) {
-        this.date = date;
-        this.description = description;
     }
 }
 
