@@ -27,7 +27,7 @@ function weatherHandler(request, response, next) {
 
 function movieHandler(request,response, next){
     try {
-        const keyword = request.query;
+        const keyword = request.query.keyword;
         movie(keyword).then(summaries => response.send(summaries)).catch((error) => {
             console.error(error);
             response.status(200).send('Sorry. Something went wrong!');
